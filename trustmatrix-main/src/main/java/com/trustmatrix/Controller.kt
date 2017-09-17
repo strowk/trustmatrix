@@ -36,7 +36,7 @@ class Controller : Initializable {
         var lastUpdate: Long = 0
 
         fun run() {
-            log.debug("gen ${generation++}")
+            log.info("tick: Generation ${generation++}")
 
             trustMatrix.generate()
             drawTrustMatrix(trustMatrix)
@@ -45,7 +45,7 @@ class Controller : Initializable {
 //            var y = img.height - 20
 //            gc.fill = Color.WHITE
 //            gc.fillRect(x, y, 100.0, 20.0)
-//            gc.strokeText("gen ${generation++}", x + 10.0, y + 10.0, 100.0)
+//            gc.strokeText("gen ${generation}", x + 10.0, y + 10.0, 100.0)
 
 
         }
