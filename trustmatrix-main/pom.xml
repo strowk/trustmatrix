@@ -24,9 +24,20 @@
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-stdlib</artifactId>
+            <artifactId>kotlin-stdlib-jre8</artifactId>
             <version>${kotlin.version}</version>
         </dependency>
+        <!--<dependency>-->
+        <!--<groupId>org.jetbrains.kotlin</groupId>-->
+        <!--<artifactId>kotlin-test</artifactId>-->
+        <!--<version>${kotlin.version}</version>-->
+        <!--<scope>test</scope>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+        <!--<groupId>org.jetbrains.kotlin</groupId>-->
+        <!--<artifactId>kotlin-reflect</artifactId>-->
+        <!--<version>${kotlin.version}</version>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -99,6 +110,38 @@
                     </execution>
                 </executions>
             </plugin>
+
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.2</version>
+                <executions>
+                    <execution>
+                        <id>assembly-desktop</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/main/assembly/desktop.xml</descriptor>
+                            </descriptors>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.trustmatrix.MainApp</mainClass>
+                                </manifest>
+                            </archive>
+                            <!--<descriptorRefs>-->
+                            <!--<descriptorRef>jar-with-dependencies</descriptorRef>-->
+                            <!--</descriptorRefs>-->
+                            <!--<finalName>${project.name}-${project.version}-desktop</finalName>-->
+                            <!--<appendAssemblyId>false</appendAssemblyId>-->
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+
         </plugins>
 
     </build>

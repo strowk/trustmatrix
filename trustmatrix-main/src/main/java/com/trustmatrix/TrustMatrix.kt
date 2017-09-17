@@ -4,6 +4,7 @@ import javafx.scene.paint.Color
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.lang.Math.random
+import java.util.*
 import java.util.stream.Collectors
 
 enum class GameChoice {
@@ -52,15 +53,59 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, 
     }
 }
 
-class Player(val strategy: Strategy) {
+abstract class PlayerMutation {
+    companion object {
+        val log: Logger = LoggerFactory.getLogger(PlayerMutation::class.java)
+    }
+
+    abstract fun mutate(player: Player): Player;
+}
+
+class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001) : PlayerMutation() {
+    override fun mutate(player: Player): Player {
+        if (player.strategy != spawnStrategy && random() > 1.0 - probability) {
+            log.debug("${player} spontaneously become ${spawnStrategy}")
+            return Player(spawnStrategy)
+        } else return player
+    }
+}
+
+class SpawnMutationUniform(val spawnStrategies: Set<Strategy>,
+                           val probability: Double = 0.001 * spawnStrategies.size,
+                           val random: Random = Random()) : PlayerMutation() {
+    override fun mutate(player: Player): Player {
+        val spawnHappened = random.nextDouble() > 1.0 - probability
+        if (!spawnHappened) return player
+
+        val spawnAllowedStrategies = spawnStrategies.filter { it != player.strategy }
+        return Player(spawnAllowedStrategies[random.nextInt(spawnAllowedStrategies.size)])
+    }
+}
+
+class Player(val strategy: Strategy,
+             val mutations: List<PlayerMutation> = DEFAULT_MUTATIONS) {
+    companion object {
+        val log: Logger = LoggerFactory.getLogger(Player::class.java)
+        val DEFAULT_MUTATIONS = listOf(
+                //SpawnMutation(Strategy.alwaysCheat),
+                //SpawnMutation(Strategy.alwaysCooperate),
+                //SpawnMutation(Strategy.anEyeForAnEye)
+                SpawnMutationUniform(setOf(
+                        Strategy.alwaysCheat
+                        , Strategy.alwaysCooperate
+                        , Strategy.anEyeForAnEye
+
+                ))
+        )
+    }
+
     var generationIncomeToShow: Int = 0
     var generationOpponentsMet: Int = 0
     var generationIncome: Int = 0
     var gamePosition: GamePosition? = null
 
-    companion object {
-        val log: Logger = LoggerFactory.getLogger(Player::class.java)
-    }
+
+    override fun toString() = "${strategy} on ${gamePosition}"
 
     var color: Color = strategy.color
     fun mutate(): Player {
@@ -86,19 +131,27 @@ class Player(val strategy: Strategy) {
             val mutateTo = strongestNeighbour.strategy
             return Player(mutateTo)
         }
+        mutations.forEach {
+            it.mutate(this).apply {
+                if (!(this === this@Player)) {
+                    return this
+                }
+            }
+        }
 
-        if (strategy != Strategy.alwaysCheat && random() > 0.999) {
-            log.debug("Spontaneously become always cheat")
-            return Player(Strategy.alwaysCheat)
-        }
-        if (strategy != Strategy.alwaysCooperate && random() > 0.999) {
-            log.debug("Spontaneously become always cooperate")
-            return Player(Strategy.alwaysCooperate)
-        }
-        if (strategy != Strategy.anEyeForAnEye && random() > 0.999) {
-            log.debug("Spontaneously become eye for an eye")
-            return Player(Strategy.anEyeForAnEye)
-        }
+//        if (strategy != Strategy.alwaysCheat && random() > 0.999) {
+//            log.debug("Spontaneously become always cheat")
+//            return Player(Strategy.alwaysCheat)
+//        }
+//        if (strategy != Strategy.alwaysCooperate && random() > 0.999) {
+//            log.debug("Spontaneously become always cooperate")
+//            return Player(Strategy.alwaysCooperate)
+//        }
+//        if (strategy != Strategy.anEyeForAnEye && random() > 0.999) {
+//            log.debug("Spontaneously become eye for an eye")
+//            return Player(Strategy.anEyeForAnEye)
+//        }
+        log.debug("No mutations applied, ${strategy} stays on ${gamePosition}")
         return this
     }
 }
@@ -170,7 +223,7 @@ data class Neighbourhood(var leftPosition: GamePosition, var rightPosition: Game
 
 
 class TrustMatrix(val xDimension: Int, val yDimension: Int,
-                  val initialDistribution: (i: Int, j: Int) -> Player = TrustMatrix.ALL_ALWAYS_CHEAT_DISTR,
+                  val initialDistribution: (i: Int, j: Int) -> Player = TrustMatrix.ALL_ALWAYS_COOPERATE_DISTR,
                   val roundsNumber: Number = 20,
                   val game: Game = TrustMatrix.DEFAULT_DILEMMA_GAME) {
     companion object defaults {
