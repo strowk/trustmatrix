@@ -1,0 +1,23 @@
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+<BorderPane fx:id="grid" fx:controller="com.trustmatrix.Controller"
+            xmlns:fx="http://javafx.com/fxml">
+    <center>
+        <Canvas fx:id="img" height="400.0" width="600.0"/>
+    </center>
+    <padding>
+        <Insets top="25" right="25" bottom="10" left="25"/>
+    </padding>
+    <right>
+        <VBox>
+            <TextField fx:id="text1"/>
+            <TextField fx:id="text2"/>
+
+        </VBox>
+    </right>
+
+
+</BorderPane>
