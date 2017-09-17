@@ -1,6 +1,5 @@
 package com.trustmatrix
 
-import com.trustmatrix.TrustMatrix
 import org.hamcrest.collection.IsCollectionWithSize
 import org.hamcrest.core.IsCollectionContaining
 import org.junit.Assert
@@ -66,15 +65,5 @@ internal class TrustMatrix4x4Test {
                         matrix.positionMatrix[0][0]
                 ))
     }
-
-//    @Before
-//    fun setUp() {
-//
-//    }
-//
-//    @After
-//    fun tearDown() {
-//
-//    }
 
 }

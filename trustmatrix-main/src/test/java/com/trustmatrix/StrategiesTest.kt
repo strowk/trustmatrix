@@ -38,16 +38,4 @@ internal class StrategiesTest {
         Assert.assertEquals(3, alwaysCheat3_1.player.generationIncome)
         Assert.assertEquals(-1, eyeForAnEye3_2.player.generationIncome)
     }
-
-
-//    @Before
-//    fun setUp() {
-//
-//    }
-//
-//    @After
-//    fun tearDown() {
-//
-//    }
-
 }
