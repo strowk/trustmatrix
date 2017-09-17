@@ -1,3 +1,13 @@
+/*-
+ * #%L
+ * trustmatrix-main
+ * %%
+ * Copyright (C) 2017 Timur Sultanaev
+ * %%
+ * Licensed under the MIT license.
+ * See LICENSE file in the root of project for details.
+ * #L%
+ */
 package com.trustmatrix
 
 import javafx.application.Application
@@ -11,7 +21,7 @@ class MainApp : Application() {
 
 
     override fun start(primaryStage: Stage) {
-        val root = FXMLLoader.load<Parent>(javaClass.getResource("trustmatrix.fxml"))
+        val root = FXMLLoader.load<Parent>(javaClass.getResource("desktop.fxml"))
         primaryStage.title = "Hello World"
         primaryStage.scene = Scene(root, 1000.0, 500.0)
         primaryStage.show()
