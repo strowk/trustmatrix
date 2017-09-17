@@ -1,5 +1,6 @@
 package com.trustmatrix
 
+import com.trustmatrix.TrustMatrix
 import org.hamcrest.collection.IsCollectionWithSize
 import org.hamcrest.core.IsCollectionContaining
 import org.junit.Assert
