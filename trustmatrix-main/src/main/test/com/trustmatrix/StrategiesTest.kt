@@ -4,7 +4,7 @@ import org.junit.Assert
 import org.junit.Test
 
 
-internal class GameTest {
+internal class StrategiesTest {
     val alwaysCheat1_1: GamePosition = GamePosition(0, 1, Player(Strategy.alwaysCheat), arrayListOf({ alwaysCheat1_2 }))
     val alwaysCheat1_2: GamePosition = GamePosition(1, 1, Player(Strategy.alwaysCheat), arrayListOf({ alwaysCheat1_1 }))
 
