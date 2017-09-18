@@ -64,42 +64,101 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, 
 }
 
 abstract class PlayerMutation {
+    abstract fun mutate(player: Player): Player?;
+}
+
+class SimpleStrongestNeighbourMutation(val random: Random = Random()) : PlayerMutation() {
     companion object {
-        val log: Logger = LoggerFactory.getLogger(PlayerMutation::class.java)
+        val log: Logger = LoggerFactory.getLogger(SimpleStrongestNeighbourMutation::class.java)
     }
 
-    abstract fun mutate(player: Player): Player;
+    override fun mutate(player: Player): Player? {
+        //TODO add generic probability
+//        if (random.nextDouble()>0.2){
+//            return null
+//        }
+        val gamePosition = player.gamePosition
+        if (gamePosition == null) {
+            log.error("Strange things happen: player without position plays");
+            throw RuntimeException("Player without position cannot play");
+        }
+        val strongestNeighbour = gamePosition.neighborPositions.stream()
+                .map { it.player }
+                // we need shuffle here because in another case we would get some particular pattern in players distribution
+                .sorted(getShuffleComparator(Player::class.java, random))
+                .max({ player1, player2 -> player1.generationIncomeToShow.compareTo(player2.generationIncomeToShow) })
+                .orElseThrow { RuntimeException("") } /*Strategy.alwaysCheat*/
+        log.debug("Strongest neighbour is in ${strongestNeighbour.gamePosition?.coordinateText()} " +
+                "and have ${strongestNeighbour.strategy} strategy " +
+                "with ${strongestNeighbour.generationIncomeToShow} generation income")
+        if (player.strategy != strongestNeighbour.strategy && player.generationIncomeToShow < strongestNeighbour.generationIncomeToShow) {
+            val mutateTo = strongestNeighbour.strategy
+            return Player(mutateTo)
+        }
+        return null
+    }
 }
 
 class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001) : PlayerMutation() {
-    override fun mutate(player: Player): Player {
+    companion object {
+        val log: Logger = LoggerFactory.getLogger(SpawnMutation::class.java)
+    }
+
+    override fun mutate(player: Player): Player? {
         if (player.strategy != spawnStrategy && random() > 1.0 - probability) {
             log.debug("${player} spontaneously become ${spawnStrategy}")
             return Player(spawnStrategy)
-        } else return player
+        }
+        return null
     }
 }
 
 class SpawnMutationUniform(val spawnStrategies: Set<Strategy>,
                            val probability: Double = 0.001 * spawnStrategies.size,
                            val random: Random = Random()) : PlayerMutation() {
-    override fun mutate(player: Player): Player {
+    override fun mutate(player: Player): Player? {
         val spawnHappened = random.nextDouble() > 1.0 - probability
-        if (!spawnHappened) return player
+        if (!spawnHappened) return null
 
         val spawnAllowedStrategies = spawnStrategies.filter { it != player.strategy }
         return Player(spawnAllowedStrategies[random.nextInt(spawnAllowedStrategies.size)])
     }
 }
 
+class SpawnStrategyControl(val spawnStrategy: Strategy, val probabilityOnGeneration: (Generation) -> Double = { 0.001 }) {
+
+}
+
+class Generation(val previous: Generation?, val number: Long = if (previous == null) 0 else (previous.number + 1)) {
+}
+
+class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
+                                val random: Random = Random()) : PlayerMutation() {
+    override fun mutate(player: Player): Player? {
+        //TODO should check if overhead
+        val coin = random.nextDouble()
+        var spawnPosition: Double = 0.0
+        spawnStrategies.forEach {
+            spawnPosition += it.probabilityOnGeneration(player.generation);
+            if (spawnPosition > coin) {
+                return Player(it.spawnStrategy)
+            }
+        }
+        return null
+    }
+}
+
 class Player(val strategy: Strategy,
-             val mutations: List<PlayerMutation> = DEFAULT_MUTATIONS) {
+             val mutations: List<PlayerMutation> = DEFAULT_MUTATIONS,
+             val random: Random = Random(),
+             var generation: Generation = Generation(null)) {
     companion object {
         val log: Logger = LoggerFactory.getLogger(Player::class.java)
         val DEFAULT_MUTATIONS = listOf(
                 //SpawnMutation(Strategy.alwaysCheat),
                 //SpawnMutation(Strategy.alwaysCooperate),
                 //SpawnMutation(Strategy.anEyeForAnEye)
+                SimpleStrongestNeighbourMutation(),
                 SpawnMutationUniform(setOf(
                         Strategy.alwaysCheat
                         , Strategy.alwaysCooperate
@@ -118,7 +177,7 @@ class Player(val strategy: Strategy,
     override fun toString() = "${strategy} on ${gamePosition}"
 
     var color: Color = strategy.color
-    fun mutate(): Player {
+    fun mutate(mutations: List<PlayerMutation> = this.mutations): Player {
         val mutateIncomeModifier = generationIncome
         val gamePosition = gamePosition
         if (gamePosition == null) {
@@ -130,37 +189,14 @@ class Player(val strategy: Strategy,
                 "and opponents met in this generation ${generationOpponentsMet}")
         generationOpponentsMet = 0
 
-        val strongestNeighbour = gamePosition.neighborPositions.stream()
-                .map { it.player }.max({ player1, player2 -> player1.generationIncomeToShow.compareTo(player2.generationIncomeToShow) })
-                .orElseThrow { RuntimeException("") } /*Strategy.alwaysCheat*/
-        log.debug("Strongest neighbour is in ${strongestNeighbour.gamePosition?.coordinateText()} " +
-                "and have ${strongestNeighbour.strategy} strategy " +
-                "with ${strongestNeighbour.generationIncomeToShow} generation income")
-
-        if (strategy != strongestNeighbour.strategy && mutateIncomeModifier < strongestNeighbour.generationIncomeToShow) {
-            val mutateTo = strongestNeighbour.strategy
-            return Player(mutateTo)
-        }
         mutations.forEach {
             it.mutate(this).apply {
-                if (!(this === this@Player)) {
+                if (this != null) {
                     return this
                 }
             }
         }
 
-//        if (strategy != Strategy.alwaysCheat && random() > 0.999) {
-//            log.debug("Spontaneously become always cheat")
-//            return Player(Strategy.alwaysCheat)
-//        }
-//        if (strategy != Strategy.alwaysCooperate && random() > 0.999) {
-//            log.debug("Spontaneously become always cooperate")
-//            return Player(Strategy.alwaysCooperate)
-//        }
-//        if (strategy != Strategy.anEyeForAnEye && random() > 0.999) {
-//            log.debug("Spontaneously become eye for an eye")
-//            return Player(Strategy.anEyeForAnEye)
-//        }
         log.debug("No mutations applied, ${strategy} stays on ${gamePosition}")
         return this
     }
@@ -169,13 +205,19 @@ class Player(val strategy: Strategy,
 class GamePosition(val i: Int, val j: Int, var player: Player, val determineNeighbors: List<() -> GamePosition>) {
     var nextPlayer: Player? = null
 
+    fun placePlayer(player: Player) {
+        this.player = player
+        player.gamePosition = this
+    }
+
     init {
         player.gamePosition = this
     }
 
     val neighborPositions by lazy { determineNeighbors.stream().map { it() }.collect(Collectors.toList()) }
-    fun prepareForGame() {
+    fun prepareForGame(generation: Generation) {
         player = nextPlayer ?: player
+        player.generation = generation
     }
 
     public operator fun compareTo(gamePosition: GamePosition): Int {
@@ -183,8 +225,8 @@ class GamePosition(val i: Int, val j: Int, var player: Player, val determineNeig
         return this.i.compareTo(gamePosition.i)
     }
 
-    fun mutate() {
-        val mutatePlayer = player.mutate()
+    fun mutate(mutations: List<PlayerMutation>) {
+        val mutatePlayer = player.mutate(mutations)
         if (player === mutatePlayer) {
             nextPlayer = null
         } else {
@@ -214,8 +256,8 @@ data class Neighbourhood(var leftPosition: GamePosition, var rightPosition: Game
         val rightGameHistory = PersonalGameHistory(gameHistory, false)
 
         List(roundsNumber.toInt(), {
-            leftPosition.prepareForGame()
-            rightPosition.prepareForGame()
+            //            leftPosition.prepareForGame()
+//            rightPosition.prepareForGame()
             val leftChoice = leftPosition.player.strategy.play(leftGameHistory)
             val rightChoice = rightPosition.player.strategy.play(rightGameHistory)
             val gameResult = game.rule(leftChoice, rightChoice)
@@ -231,11 +273,17 @@ data class Neighbourhood(var leftPosition: GamePosition, var rightPosition: Game
     }
 }
 
+fun <T> getShuffleComparator(clazz: Class<T>, random: Random): Comparator<T> = kotlin.Comparator { o1, o2 -> random.nextInt(2) - 1 }
 
 class TrustMatrix(val xDimension: Int, val yDimension: Int,
                   val initialDistribution: (i: Int, j: Int) -> Player = TrustMatrix.ALL_ALWAYS_COOPERATE_DISTR,
                   val roundsNumber: Number = 20,
-                  val game: Game = TrustMatrix.DEFAULT_DILEMMA_GAME) {
+                  val game: Game = TrustMatrix.DEFAULT_DILEMMA_GAME,
+                  val mutations: List<PlayerMutation> = Player.DEFAULT_MUTATIONS,
+                  val random: Random = Random()) {
+    var generation = Generation(null)
+
+
     companion object defaults {
         val ALL_ALWAYS_COOPERATE_DISTR: (i: Int, j: Int) -> Player = { _, _ -> Player(Strategy.alwaysCooperate) }
         val ALL_ALWAYS_CHEAT_DISTR: (i: Int, j: Int) -> Player = { _, _ -> Player(Strategy.alwaysCheat) }
@@ -288,16 +336,20 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
     }
 
     fun mutate() {
-        positionMatrix.forEach { it.forEach { it.mutate() } }
+//        positionMatrix.forEach { it.sortedWith(getShuffleComparator(GamePosition::class.java)).forEach { it.mutate(mutations) } }
         //positionMatrix[round(random() * yDimension).toInt()][round(random() * xDimension).toInt()].mutate()
+        positionMatrix/*.sortedWith(getShuffleComparator(Array<GamePosition>::class.java))*/.forEach { it.forEach { it.mutate(mutations) } }
     }
 
     fun generate() {
         game()
         mutate()
+        generation = Generation(generation)
+        positionMatrix.forEach { it.forEach { it.prepareForGame(generation) } }
+
     }
 
-    val neighbourhood: Set<Neighbourhood>
+    val neighbourhood: Collection<Neighbourhood>
 
 
     init {
@@ -314,6 +366,6 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
             }
         }
         log.info("Prepared ${builtNeighbourhood.size} neighbourhoods")
-        neighbourhood = builtNeighbourhood
+        neighbourhood = builtNeighbourhood/*.stream().sorted(getShuffleComparator(Neighbourhood::class.java)).collect(Collectors.toList())*/
     }
 }
