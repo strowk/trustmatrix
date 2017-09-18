@@ -336,9 +336,7 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
     }
 
     fun mutate() {
-//        positionMatrix.forEach { it.sortedWith(getShuffleComparator(GamePosition::class.java)).forEach { it.mutate(mutations) } }
-        //positionMatrix[round(random() * yDimension).toInt()][round(random() * xDimension).toInt()].mutate()
-        positionMatrix/*.sortedWith(getShuffleComparator(Array<GamePosition>::class.java))*/.forEach { it.forEach { it.mutate(mutations) } }
+        positionMatrix.forEach { it.forEach { it.mutate(mutations) } }
     }
 
     fun generate() {
@@ -366,6 +364,6 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
             }
         }
         log.info("Prepared ${builtNeighbourhood.size} neighbourhoods")
-        neighbourhood = builtNeighbourhood/*.stream().sorted(getShuffleComparator(Neighbourhood::class.java)).collect(Collectors.toList())*/
+        neighbourhood = builtNeighbourhood
     }
 }
