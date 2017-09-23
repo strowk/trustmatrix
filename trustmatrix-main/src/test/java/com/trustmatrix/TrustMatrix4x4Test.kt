@@ -19,10 +19,9 @@ import org.junit.Test
 
 internal class TrustMatrix4x4Test {
     val matrix = TrustMatrix(4, 4, TrustMatrix.ALL_ALWAYS_COOPERATE_DISTR, 10, TrustMatrix.DEFAULT_DILEMMA_GAME,
-            listOf(SimpleStrongestNeighbourMutation()))
+            listOf(SimpleStrongestNeighbourMutation(distortion = 0.0)))
 
     @Test
-    @Ignore
     fun testMutation() {
         //we place cheat spawn
         matrix.positionMatrix[1][1].placePlayer(Player(Strategy.alwaysCheat))
