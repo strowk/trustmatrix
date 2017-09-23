@@ -11,9 +11,13 @@
 package com.trustmatrix
 
 import javafx.animation.AnimationTimer
+import javafx.collections.FXCollections
 import javafx.fxml.Initializable
 import javafx.scene.canvas.Canvas
 import javafx.scene.canvas.GraphicsContext
+import javafx.scene.control.Button
+import javafx.scene.control.ListView
+import javafx.scene.control.TextField
 import javafx.scene.layout.BorderPane
 import javafx.scene.paint.Color
 import org.slf4j.Logger
@@ -27,8 +31,16 @@ class Controller : Initializable {
     lateinit var img: Canvas
     lateinit var gc: GraphicsContext
     lateinit var grid: BorderPane
-    val trustMatrix = TrustMatrix(100, 100)
+    lateinit var resetButton: Button
+    lateinit var distortion: TextField
+    lateinit var speed: TextField
+    var trustMatrix = TrustMatrix(100, 100)
+    val initialDistributionItems = FXCollections.observableArrayList(InitialDistribution.values().map { it.name })
+    val defaultItems = FXCollections.observableArrayList(Strategy.defaults::class.members.filter { it.returnType == Strategy::class })
+    lateinit var listBoxForInitialDistribution: ListView<String>
 
+
+    private fun speed() = speed.text.toDoubleOrNull() ?: 1.0
     private fun drawTrustMatrix(matrix: TrustMatrix) {
         val positionRectXSize = img.width / matrix.xDimension
         val positionRectYSize = img.height / matrix.yDimension
@@ -46,7 +58,7 @@ class Controller : Initializable {
         var lastUpdate: Long = 0
 
         fun run() {
-            log.info("tick: Generation ${generation++}")
+            log.info("tick: Generation ${trustMatrix.generation.number}")
 
             trustMatrix.generate()
             drawTrustMatrix(trustMatrix)
@@ -61,11 +73,15 @@ class Controller : Initializable {
         }
 
         override fun handle(now: Long) {
-            if (now - lastUpdate >= 280_000_000) {
+            if (now - lastUpdate >= 280_000_000 * (1.0 - speed())) {
+
                 fillBackground()
                 run()
                 lastUpdate = now
+
             }
+
+
         }
 
         private fun fillBackground() {
@@ -76,6 +92,11 @@ class Controller : Initializable {
 
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
+        listBoxForInitialDistribution.items = initialDistributionItems
+        listBoxForInitialDistribution.prefHeight = initialDistributionItems.size * 24 + 2.0
+        resetButton.setOnMouseClicked {
+            trustMatrix = buildTrustMatrix()
+        }
         gc = img.getGraphicsContext2D();
         grid.layoutXProperty()
 //        img.widthProperty().bind(grid.bottom.layoutBoundsProperty().)
@@ -84,4 +105,17 @@ class Controller : Initializable {
         gc.stroke = Color.BLACK
         at.start()
     }
+
+    private fun buildTrustMatrix() = TrustMatrix(100, 100,
+            mutations = listOf(
+                    SimpleStrongestNeighbourMutation(distortion = distortion.text.toDoubleOrNull() ?: 0.0),
+                    SpawnMutationUniform(setOf(
+                            Strategy.alwaysCheat
+                            , Strategy.alwaysCooperate
+                            , Strategy.anEyeForAnEye
+                            , Strategy.smartOne
+
+                    ))
+            ),
+            initialDistribution = InitialDistribution.valueOf(listBoxForInitialDistribution.focusModel.focusedItem ?: InitialDistribution.ALL_ALWAYS_CHEAT.name).player)
 }

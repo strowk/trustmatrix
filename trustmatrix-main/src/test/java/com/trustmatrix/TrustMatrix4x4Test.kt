@@ -13,6 +13,7 @@ package com.trustmatrix
 import org.hamcrest.collection.IsCollectionWithSize
 import org.hamcrest.core.IsCollectionContaining
 import org.junit.Assert
+import org.junit.Ignore
 import org.junit.Test
 
 
@@ -21,6 +22,7 @@ internal class TrustMatrix4x4Test {
             listOf(SimpleStrongestNeighbourMutation()))
 
     @Test
+    @Ignore
     fun testMutation() {
         //we place cheat spawn
         matrix.positionMatrix[1][1].placePlayer(Player(Strategy.alwaysCheat))

@@ -10,6 +10,7 @@
  */
 package com.trustmatrix
 
+import com.trustmatrix.Player.Companion.DEFAULT_MUTATIONS
 import javafx.scene.paint.Color
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -56,6 +57,38 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, 
                         it.results[it.gameHistory.currentRound - 1].opponentChoice
                     }
                 }, Color.BLUE, "anEyeForAnEye")
+        val smartOne = Strategy(
+                {
+                    if (it.gameHistory.currentRound == 0) {
+                        GameChoice.CHEAT
+                    } else {
+                        if (it.gameHistory.currentRound == 1) {
+                            GameChoice.COOPERATE
+                        } else {
+                            val firstOpponentChoice = it.results[0].opponentChoice
+                            val secondOpponentChoice = it.results[1].opponentChoice
+                            if (firstOpponentChoice == GameChoice.CHEAT && secondOpponentChoice==GameChoice.CHEAT ){
+                                //we play with always cheat - let's not be tricked anymore
+                                GameChoice.CHEAT
+                            }
+                            if (firstOpponentChoice == GameChoice.COOPERATE && secondOpponentChoice==GameChoice.CHEAT ){
+                                //we play with eye for an eye - let's be good
+                                GameChoice.COOPERATE
+                            }
+                            if (firstOpponentChoice == GameChoice.CHEAT && secondOpponentChoice==GameChoice.COOPERATE ){
+                                //we play with ourselves - let's be good
+                                GameChoice.COOPERATE
+                            }
+                            if (firstOpponentChoice == GameChoice.COOPERATE && secondOpponentChoice==GameChoice.COOPERATE ){
+                                //we play with always cooperate - we can be bad finally
+                                GameChoice.CHEAT
+                            }
+                            //this we should not reach but however let's be good for a change
+                            GameChoice.COOPERATE
+                        }
+
+                    }
+                }, Color.YELLOW, "smartOne")
     }
 
     override fun toString(): String {
@@ -67,16 +100,16 @@ abstract class PlayerMutation {
     abstract fun mutate(player: Player): Player?;
 }
 
-class SimpleStrongestNeighbourMutation(val random: Random = Random()) : PlayerMutation() {
+class SimpleStrongestNeighbourMutation(val random: Random = Random(), val distortion: Double = 0.5) : PlayerMutation() {
     companion object {
         val log: Logger = LoggerFactory.getLogger(SimpleStrongestNeighbourMutation::class.java)
     }
 
     override fun mutate(player: Player): Player? {
         //TODO add generic probability
-//        if (random.nextDouble()>0.2){
-//            return null
-//        }
+        if (random.nextDouble() > 1.0 - distortion) {
+            return null
+        }
         val gamePosition = player.gamePosition
         if (gamePosition == null) {
             log.error("Strange things happen: player without position plays");
@@ -129,7 +162,8 @@ class SpawnStrategyControl(val spawnStrategy: Strategy, val probabilityOnGenerat
 
 }
 
-class Generation(val previous: Generation?, val number: Long = if (previous == null) 0 else (previous.number + 1)) {
+class Generation(val previous: Generation?, val number: Long = if (previous == null) 0 else (previous.number + 1),
+                 val mutations: List<PlayerMutation> = if (previous == null) DEFAULT_MUTATIONS else previous.mutations) {
 }
 
 class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
@@ -149,7 +183,6 @@ class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
 }
 
 class Player(val strategy: Strategy,
-             val mutations: List<PlayerMutation> = DEFAULT_MUTATIONS,
              val random: Random = Random(),
              var generation: Generation = Generation(null)) {
     companion object {
@@ -177,7 +210,7 @@ class Player(val strategy: Strategy,
     override fun toString() = "${strategy} on ${gamePosition}"
 
     var color: Color = strategy.color
-    fun mutate(mutations: List<PlayerMutation> = this.mutations): Player {
+    fun mutate(mutations: List<PlayerMutation> = this.generation.mutations): Player {
         val mutateIncomeModifier = generationIncome
         val gamePosition = gamePosition
         if (gamePosition == null) {
@@ -275,18 +308,22 @@ data class Neighbourhood(var leftPosition: GamePosition, var rightPosition: Game
 
 fun <T> getShuffleComparator(clazz: Class<T>, random: Random): Comparator<T> = kotlin.Comparator { o1, o2 -> random.nextInt(2) - 1 }
 
+enum class InitialDistribution(val player: (i: Int, j: Int) -> Player) {
+    ALL_ALWAYS_COOPERATE({ _, _ -> Player(Strategy.alwaysCooperate) }),
+    ALL_ALWAYS_CHEAT({ _, _ -> Player(Strategy.alwaysCheat) })
+}
+
 class TrustMatrix(val xDimension: Int, val yDimension: Int,
-                  val initialDistribution: (i: Int, j: Int) -> Player = TrustMatrix.ALL_ALWAYS_COOPERATE_DISTR,
+                  val initialDistribution: (i: Int, j: Int) -> Player = ALL_ALWAYS_COOPERATE_DISTR,
                   val roundsNumber: Number = 20,
                   val game: Game = TrustMatrix.DEFAULT_DILEMMA_GAME,
                   val mutations: List<PlayerMutation> = Player.DEFAULT_MUTATIONS,
                   val random: Random = Random()) {
-    var generation = Generation(null)
-
+    var generation = Generation(null, mutations = mutations)
 
     companion object defaults {
-        val ALL_ALWAYS_COOPERATE_DISTR: (i: Int, j: Int) -> Player = { _, _ -> Player(Strategy.alwaysCooperate) }
-        val ALL_ALWAYS_CHEAT_DISTR: (i: Int, j: Int) -> Player = { _, _ -> Player(Strategy.alwaysCheat) }
+        val ALL_ALWAYS_COOPERATE_DISTR = InitialDistribution.ALL_ALWAYS_COOPERATE.player
+        val ALL_ALWAYS_CHEAT_DISTR = InitialDistribution.ALL_ALWAYS_CHEAT.player
         val DEFAULT_DILEMMA_GAME: Game = Game({ leftChoice, rightChoice ->
             GameResult(
                     if (leftChoice == rightChoice) {
