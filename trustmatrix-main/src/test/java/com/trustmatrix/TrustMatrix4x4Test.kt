@@ -10,16 +10,22 @@
  */
 package com.trustmatrix
 
+import com.trustmatrix.platform.JavaPlatformTools
 import org.hamcrest.collection.IsCollectionWithSize
 import org.hamcrest.core.IsCollectionContaining
 import org.junit.Assert
-import org.junit.Ignore
 import org.junit.Test
 
 
 internal class TrustMatrix4x4Test {
+    companion object {
+        //have to initialize all statics first
+        val platform = JavaPlatformTools()
+    }
+
     val matrix = TrustMatrix(4, 4, TrustMatrix.ALL_ALWAYS_COOPERATE_DISTR, 10, TrustMatrix.DEFAULT_DILEMMA_GAME,
-            listOf(SimpleStrongestNeighbourMutation(distortion = 0.0)))
+            listOf(SimpleStrongestNeighbourMutation(distortion = 0.0)),
+            platformTools = JavaPlatformTools())
 
     @Test
     fun testMutation() {

@@ -11,11 +11,17 @@
 package com.trustmatrix
 
 import com.trustmatrix.*
+import com.trustmatrix.platform.JavaPlatformTools
 import org.junit.Assert
 import org.junit.Test
 
 
 internal class StrategiesTest {
+    companion object {
+        //have to initialize all statics first
+        val platform = JavaPlatformTools()
+    }
+
     val alwaysCheat1_1: GamePosition = GamePosition(0, 1, Player(Strategy.defaults.alwaysCheat), arrayListOf({ alwaysCheat1_2 }))
     val alwaysCheat1_2: GamePosition = GamePosition(1, 1, Player(Strategy.defaults.alwaysCheat), arrayListOf({ alwaysCheat1_1 }))
 

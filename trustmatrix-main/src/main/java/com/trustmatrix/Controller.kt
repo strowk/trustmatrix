@@ -10,6 +10,7 @@
  */
 package com.trustmatrix
 
+import com.trustmatrix.platform.JavaPlatformTools
 import javafx.animation.AnimationTimer
 import javafx.collections.FXCollections
 import javafx.fxml.Initializable
@@ -27,6 +28,10 @@ import java.util.*
 
 
 class Controller : Initializable {
+    companion object {
+        val platform = JavaPlatformTools()
+    }
+
     val log: Logger = LoggerFactory.getLogger(Controller::class.java)
     lateinit var img: Canvas
     lateinit var gc: GraphicsContext
@@ -34,7 +39,7 @@ class Controller : Initializable {
     lateinit var resetButton: Button
     lateinit var distortion: TextField
     lateinit var speed: TextField
-    var trustMatrix = TrustMatrix(100, 100)
+    var trustMatrix = TrustMatrix(100, 100, platformTools = platform)
     val initialDistributionItems = FXCollections.observableArrayList(InitialDistribution.values().map { it.name })
     val defaultItems = FXCollections.observableArrayList(Strategy.defaults::class.members.filter { it.returnType == Strategy::class })
     lateinit var listBoxForInitialDistribution: ListView<String>
@@ -46,7 +51,7 @@ class Controller : Initializable {
         val positionRectYSize = img.height / matrix.yDimension
         matrix.positionMatrix.forEach {
             it.forEach {
-                gc.fill = it.color()
+                gc.fill = it.color().toPlatform() as Color
                 gc.fillRect(positionRectXSize * it.j, positionRectYSize * it.i, positionRectXSize, positionRectYSize)
             }
         }
@@ -117,5 +122,8 @@ class Controller : Initializable {
 
                     ))
             ),
-            initialDistribution = InitialDistribution.valueOf(listBoxForInitialDistribution.focusModel.focusedItem ?: InitialDistribution.ALL_ALWAYS_CHEAT.name).player)
+            initialDistribution = InitialDistribution.valueOf(
+                    listBoxForInitialDistribution.focusModel.focusedItem ?:
+                            InitialDistribution.ALL_ALWAYS_CHEAT.name).player,
+            platformTools = platform)
 }

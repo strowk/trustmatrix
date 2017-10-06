@@ -11,12 +11,10 @@
 package com.trustmatrix
 
 import com.trustmatrix.Player.Companion.DEFAULT_MUTATIONS
-import javafx.scene.paint.Color
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-import java.lang.Math.random
-import java.util.*
-import java.util.stream.Collectors
+import com.trustmatrix.platform.LoggerBuilder
+import com.trustmatrix.platform.PlatformTools
+import com.trustmatrix.platform.Random
+import kotlin.reflect.KClass
 
 enum class GameChoice {
     COOPERATE, CHEAT
@@ -45,10 +43,10 @@ class PersonalGameHistory(val gameHistory: GameHistory, val left: Boolean) {
 
 }
 
-class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, val name: String = "default") {
+class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: com.trustmatrix.platform.Color, val name: String = "default") {
     companion object defaults {
-        val alwaysCooperate = Strategy({ GameChoice.COOPERATE }, Color.WHITE, "alwaysCooperate")
-        val alwaysCheat = Strategy({ GameChoice.CHEAT }, Color.BLACK, "alwaysCheat")
+        val alwaysCooperate = Strategy({ GameChoice.COOPERATE }, com.trustmatrix.platform.Color.WHITE, "alwaysCooperate")
+        val alwaysCheat = Strategy({ GameChoice.CHEAT }, com.trustmatrix.platform.Color.BLACK, "alwaysCheat")
         val anEyeForAnEye = Strategy(
                 {
                     if (it.gameHistory.currentRound == 0) {
@@ -56,7 +54,7 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, 
                     } else {
                         it.results[it.gameHistory.currentRound - 1].opponentChoice
                     }
-                }, Color.BLUE, "anEyeForAnEye")
+                }, com.trustmatrix.platform.Color.BLUE, "anEyeForAnEye")
         val smartOne = Strategy(
                 {
                     if (it.gameHistory.currentRound == 0) {
@@ -67,19 +65,19 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, 
                         } else {
                             val firstOpponentChoice = it.results[0].opponentChoice
                             val secondOpponentChoice = it.results[1].opponentChoice
-                            if (firstOpponentChoice == GameChoice.CHEAT && secondOpponentChoice==GameChoice.CHEAT ){
+                            if (firstOpponentChoice == GameChoice.CHEAT && secondOpponentChoice == GameChoice.CHEAT) {
                                 //we play with always cheat - let's not be tricked anymore
                                 GameChoice.CHEAT
                             }
-                            if (firstOpponentChoice == GameChoice.COOPERATE && secondOpponentChoice==GameChoice.CHEAT ){
+                            if (firstOpponentChoice == GameChoice.COOPERATE && secondOpponentChoice == GameChoice.CHEAT) {
                                 //we play with eye for an eye - let's be good
                                 GameChoice.COOPERATE
                             }
-                            if (firstOpponentChoice == GameChoice.CHEAT && secondOpponentChoice==GameChoice.COOPERATE ){
+                            if (firstOpponentChoice == GameChoice.CHEAT && secondOpponentChoice == GameChoice.COOPERATE) {
                                 //we play with ourselves - let's be good
                                 GameChoice.COOPERATE
                             }
-                            if (firstOpponentChoice == GameChoice.COOPERATE && secondOpponentChoice==GameChoice.COOPERATE ){
+                            if (firstOpponentChoice == GameChoice.COOPERATE && secondOpponentChoice == GameChoice.COOPERATE) {
                                 //we play with always cooperate - we can be bad finally
                                 GameChoice.CHEAT
                             }
@@ -88,7 +86,7 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, 
                         }
 
                     }
-                }, Color.YELLOW, "smartOne")
+                }, com.trustmatrix.platform.Color.YELLOW, "smartOne")
     }
 
     override fun toString(): String {
@@ -100,9 +98,10 @@ abstract class PlayerMutation {
     abstract fun mutate(player: Player): Player?;
 }
 
-class SimpleStrongestNeighbourMutation(val random: Random = Random(), val distortion: Double = 0.5) : PlayerMutation() {
+class SimpleStrongestNeighbourMutation(val random: com.trustmatrix.platform.Random = com.trustmatrix.platform.Random.DEFAULT,
+                                       val distortion: Double = 0.5) : PlayerMutation() {
     companion object {
-        val log: Logger = LoggerFactory.getLogger(SimpleStrongestNeighbourMutation::class.java)
+        val log: com.trustmatrix.platform.Logger = LoggerBuilder.factory(SimpleStrongestNeighbourMutation::class).getLogger()
     }
 
     override fun mutate(player: Player): Player? {
@@ -115,12 +114,12 @@ class SimpleStrongestNeighbourMutation(val random: Random = Random(), val distor
             log.error("Strange things happen: player without position plays");
             throw RuntimeException("Player without position cannot play");
         }
-        val strongestNeighbour = gamePosition.neighborPositions.stream()
+        val strongestNeighbour = gamePosition.neighborPositions
                 .map { it.player }
                 // we need shuffle here because in another case we would get some particular pattern in players distribution
-                .sorted(getShuffleComparator(Player::class.java, random))
-                .max({ player1, player2 -> player1.generationIncomeToShow.compareTo(player2.generationIncomeToShow) })
-                .orElseThrow { RuntimeException("") } /*Strategy.alwaysCheat*/
+                .sortedWith(getShuffleComparator(Player::class, random))
+                .maxWith(kotlin.Comparator { player1, player2 -> player1.generationIncomeToShow.compareTo(player2.generationIncomeToShow) })
+                ?: throw RuntimeException("No neighbours to find maximum, cannot calculate mutation for isolated player"); /*TODO maybe Strategy.alwaysCheat*/
         log.debug("Strongest neighbour is in ${strongestNeighbour.gamePosition?.coordinateText()} " +
                 "and have ${strongestNeighbour.strategy} strategy " +
                 "with ${strongestNeighbour.generationIncomeToShow} generation income")
@@ -132,13 +131,14 @@ class SimpleStrongestNeighbourMutation(val random: Random = Random(), val distor
     }
 }
 
-class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001) : PlayerMutation() {
+class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001,
+                    val random: com.trustmatrix.platform.Random = com.trustmatrix.platform.Random.DEFAULT) : PlayerMutation() {
     companion object {
-        val log: Logger = LoggerFactory.getLogger(SpawnMutation::class.java)
+        val log: com.trustmatrix.platform.Logger = LoggerBuilder.factory(SpawnMutation::class).getLogger()
     }
 
     override fun mutate(player: Player): Player? {
-        if (player.strategy != spawnStrategy && random() > 1.0 - probability) {
+        if (player.strategy != spawnStrategy && random.nextDouble() > 1.0 - probability) {
             log.debug("${player} spontaneously become ${spawnStrategy}")
             return Player(spawnStrategy)
         }
@@ -148,7 +148,7 @@ class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001
 
 class SpawnMutationUniform(val spawnStrategies: Set<Strategy>,
                            val probability: Double = 0.001 * spawnStrategies.size,
-                           val random: Random = Random()) : PlayerMutation() {
+                           val random: Random = Random.DEFAULT) : PlayerMutation() {
     override fun mutate(player: Player): Player? {
         val spawnHappened = random.nextDouble() > 1.0 - probability
         if (!spawnHappened) return null
@@ -167,7 +167,7 @@ class Generation(val previous: Generation?, val number: Long = if (previous == n
 }
 
 class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
-                                val random: Random = Random()) : PlayerMutation() {
+                                val random: Random = Random.DEFAULT) : PlayerMutation() {
     override fun mutate(player: Player): Player? {
         //TODO should check if overhead
         val coin = random.nextDouble()
@@ -183,10 +183,9 @@ class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
 }
 
 class Player(val strategy: Strategy,
-             val random: Random = Random(),
              var generation: Generation = Generation(null)) {
     companion object {
-        val log: Logger = LoggerFactory.getLogger(Player::class.java)
+        val log: com.trustmatrix.platform.Logger = LoggerBuilder.factory(Player::class).getLogger()
         val DEFAULT_MUTATIONS = listOf(
                 //SpawnMutation(Strategy.alwaysCheat),
                 //SpawnMutation(Strategy.alwaysCooperate),
@@ -209,7 +208,7 @@ class Player(val strategy: Strategy,
 
     override fun toString() = "${strategy} on ${gamePosition}"
 
-    var color: Color = strategy.color
+    var color: com.trustmatrix.platform.Color = strategy.color
     fun mutate(mutations: List<PlayerMutation> = this.generation.mutations): Player {
         val mutateIncomeModifier = generationIncome
         val gamePosition = gamePosition
@@ -247,7 +246,7 @@ class GamePosition(val i: Int, val j: Int, var player: Player, val determineNeig
         player.gamePosition = this
     }
 
-    val neighborPositions by lazy { determineNeighbors.stream().map { it() }.collect(Collectors.toList()) }
+    val neighborPositions by lazy { determineNeighbors.map { it() }.toList() }
     fun prepareForGame(generation: Generation) {
         player = nextPlayer ?: player
         player.generation = generation
@@ -306,7 +305,7 @@ data class Neighbourhood(var leftPosition: GamePosition, var rightPosition: Game
     }
 }
 
-fun <T> getShuffleComparator(clazz: Class<T>, random: Random): Comparator<T> = kotlin.Comparator { o1, o2 -> random.nextInt(2) - 1 }
+fun <T> getShuffleComparator(clazz: KClass<out Any>, random: com.trustmatrix.platform.Random): Comparator<T> = kotlin.Comparator { o1, o2 -> random.nextInt(2) - 1 }
 
 enum class InitialDistribution(val player: (i: Int, j: Int) -> Player) {
     ALL_ALWAYS_COOPERATE({ _, _ -> Player(Strategy.alwaysCooperate) }),
@@ -318,7 +317,7 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
                   val roundsNumber: Number = 20,
                   val game: Game = TrustMatrix.DEFAULT_DILEMMA_GAME,
                   val mutations: List<PlayerMutation> = Player.DEFAULT_MUTATIONS,
-                  val random: Random = Random()) {
+                  val platformTools: PlatformTools) {
     var generation = Generation(null, mutations = mutations)
 
     companion object defaults {
@@ -338,9 +337,8 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
                         if (leftChoice == GameChoice.COOPERATE) 3 else -1
                     }, leftChoice, rightChoice)
         })
+        val log: com.trustmatrix.platform.Logger = LoggerBuilder.factory(TrustMatrix::class).getLogger()
     }
-
-    val log: Logger = LoggerFactory.getLogger(TrustMatrix::class.java)
 
     val positionMatrix = Array(yDimension, { i ->
         Array(xDimension, { j ->
@@ -366,7 +364,7 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
         return positionMatrix[realI][realJ]
     }
 
-    fun game() {
+    fun play() {
         neighbourhood.forEach {
             it.playGame(roundsNumber, game)
         }
@@ -377,7 +375,7 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
     }
 
     fun generate() {
-        game()
+        play()
         mutate()
         generation = Generation(generation)
         positionMatrix.forEach { it.forEach { it.prepareForGame(generation) } }
