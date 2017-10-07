@@ -31,20 +31,26 @@ enum class LogLevels {
     TRACE, DEBUG, INFO, ERROR
 }
 
-class JsConsoleLogger(val clazz: KClass<out Any>) : Logger {
-    val level = LogLevels.DEBUG
+class ConsoleAppender {
+    var level = LogLevels.DEBUG
     val leveledLog: (message: String, logWith: LogLevels, logFun: (msg: String) -> Unit) -> Unit = { message, logWith, logFun ->
         if (level.ordinal <= logWith.ordinal) logFun(message) else Unit
     }
+}
 
-    override fun info(message: String) = leveledLog(message, LogLevels.INFO, { console.log(it) })
-    override fun debug(message: String) = leveledLog(message, LogLevels.DEBUG, { console.log("DEBUG:" + it) })
-    override fun trace(message: String) = leveledLog(message, LogLevels.TRACE, { console.log("TRACE:" + it) })
-    override fun error(message: String) = leveledLog(message, LogLevels.ERROR, { console.error(it) })
+class JsConsoleLogger(val clazz: KClass<out Any>, val appender: ConsoleAppender) : Logger {
+    override fun info(message: String) = appender.leveledLog(message, LogLevels.INFO, { console.log(it) })
+    override fun debug(message: String) = appender.leveledLog(message, LogLevels.DEBUG, { console.log("DEBUG:" + it) })
+    override fun trace(message: String) = appender.leveledLog(message, LogLevels.TRACE, { console.log("TRACE:" + it) })
+    override fun error(message: String) = appender.leveledLog(message, LogLevels.ERROR, { console.error(it) })
 }
 
 class JsLoggerFactory(val clazz: KClass<out Any>) : LoggerFactory {
-    override fun getLogger(): Logger = JsConsoleLogger(clazz)
+    companion object {
+        val appender = ConsoleAppender()
+    }
+
+    override fun getLogger(): Logger = JsConsoleLogger(clazz, appender)
 }
 
 enum class JsColors {

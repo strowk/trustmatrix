@@ -16,12 +16,13 @@ apply plugin: 'kotlin2js'
 
 repositories {
     mavenCentral()
+    jcenter()
 }
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
     testCompile 'io.kotlintest:kotlintest:2.0.5'
-
+    compile "org.jetbrains.kotlinx:kotlinx-html-js:0.6.4"
 }
 
 task assembleWeb(type: Sync) {

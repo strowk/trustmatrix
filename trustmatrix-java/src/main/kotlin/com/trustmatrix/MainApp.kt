@@ -18,11 +18,9 @@ import javafx.stage.Stage
 
 
 class MainApp : Application() {
-
-
     override fun start(primaryStage: Stage) {
         val root = FXMLLoader.load<Parent>(javaClass.getResource("desktop.fxml"))
-        primaryStage.title = "Hello World"
+        primaryStage.title = "Trust Matrix Evolution"
         primaryStage.scene = Scene(root, 1000.0, 500.0)
         primaryStage.show()
     }

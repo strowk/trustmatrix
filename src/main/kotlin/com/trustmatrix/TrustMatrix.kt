@@ -252,7 +252,7 @@ class GamePosition(val i: Int, val j: Int, var player: Player, val determineNeig
         }
     }
 
-    fun color() = player.color
+    fun color() = player.color.toPlatform()
     fun coordinateText() = "(${i}, ${j})"
 
     public override fun toString(): String {
