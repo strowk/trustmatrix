@@ -1,13 +1,3 @@
-/*-
- * #%L
- * trustmatrix-main
- * %%
- * Copyright (C) 2017 Timur Sultanaev
- * %%
- * Licensed under the MIT license.
- * See LICENSE file in the root of project for details.
- * #L%
- */
 package com.trustmatrix.platform
 
 import kotlin.reflect.KClass
@@ -54,4 +44,3 @@ interface Color {
         lateinit var BLUE: Color
     }
 }
-

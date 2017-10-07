@@ -1,15 +1,6 @@
-/*-
- * #%L
- * trustmatrix-main
- * %%
- * Copyright (C) 2017 Timur Sultanaev
- * %%
- * Licensed under the MIT license.
- * See LICENSE file in the root of project for details.
- * #L%
- */
 package com.trustmatrix.platform
 
+import java.util.*
 import kotlin.reflect.KClass
 
 class JavaPlatformTools : PlatformTools {
@@ -47,7 +38,6 @@ class Slf4jLogger(val logger: org.slf4j.Logger) : Logger {
 class Slf4jLoggerFactory(val clazz: KClass<out Any>) : LoggerFactory {
     override fun getLogger(): Logger = Slf4jLogger(org.slf4j.LoggerFactory.getLogger(clazz.java))
 }
-
 
 class JavaFxColor(val color: javafx.scene.paint.Color) : Color {
     override fun toPlatform(): Any = color

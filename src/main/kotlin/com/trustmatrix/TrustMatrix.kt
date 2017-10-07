@@ -1,19 +1,6 @@
-/*-
- * #%L
- * trustmatrix-main
- * %%
- * Copyright (C) 2017 Timur Sultanaev
- * %%
- * Licensed under the MIT license.
- * See LICENSE file in the root of project for details.
- * #L%
- */
 package com.trustmatrix
 
-import com.trustmatrix.Player.Companion.DEFAULT_MUTATIONS
-import com.trustmatrix.platform.LoggerBuilder
-import com.trustmatrix.platform.PlatformTools
-import com.trustmatrix.platform.Random
+import com.trustmatrix.platform.*
 import kotlin.reflect.KClass
 
 enum class GameChoice {
@@ -21,7 +8,6 @@ enum class GameChoice {
 }
 
 data class GameResult(val leftIncome: Int, val rightIncome: Int, val leftChoice: GameChoice, val rightChoice: GameChoice)
-
 data class PersonalGameResult(val myIncome: Int, val opponentIncome: Int, val myChoice: GameChoice, val opponentChoice: GameChoice) {
     constructor(ind: GameResult, left: Boolean) : this(
             if (left) ind.leftIncome else ind.rightIncome,
@@ -31,7 +17,6 @@ data class PersonalGameResult(val myIncome: Int, val opponentIncome: Int, val my
 }
 
 class Game(val rule: (leftChoice: GameChoice, rightChoice: GameChoice) -> GameResult)
-
 class GameHistory(val game: Game) {
     var currentRound = 0
     val gameResults: MutableList<GameResult> = ArrayList<GameResult>()
@@ -43,10 +28,10 @@ class PersonalGameHistory(val gameHistory: GameHistory, val left: Boolean) {
 
 }
 
-class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: com.trustmatrix.platform.Color, val name: String = "default") {
+class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, val name: String = "default") {
     companion object defaults {
-        val alwaysCooperate = Strategy({ GameChoice.COOPERATE }, com.trustmatrix.platform.Color.WHITE, "alwaysCooperate")
-        val alwaysCheat = Strategy({ GameChoice.CHEAT }, com.trustmatrix.platform.Color.BLACK, "alwaysCheat")
+        val alwaysCooperate = Strategy({ GameChoice.COOPERATE }, Color.WHITE, "alwaysCooperate")
+        val alwaysCheat = Strategy({ GameChoice.CHEAT }, Color.BLACK, "alwaysCheat")
         val anEyeForAnEye = Strategy(
                 {
                     if (it.gameHistory.currentRound == 0) {
@@ -54,7 +39,7 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: com.tru
                     } else {
                         it.results[it.gameHistory.currentRound - 1].opponentChoice
                     }
-                }, com.trustmatrix.platform.Color.BLUE, "anEyeForAnEye")
+                }, Color.BLUE, "anEyeForAnEye")
         val smartOne = Strategy(
                 {
                     if (it.gameHistory.currentRound == 0) {
@@ -86,7 +71,7 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: com.tru
                         }
 
                     }
-                }, com.trustmatrix.platform.Color.YELLOW, "smartOne")
+                }, Color.YELLOW, "smartOne")
     }
 
     override fun toString(): String {
@@ -98,10 +83,10 @@ abstract class PlayerMutation {
     abstract fun mutate(player: Player): Player?;
 }
 
-class SimpleStrongestNeighbourMutation(val random: com.trustmatrix.platform.Random = com.trustmatrix.platform.Random.DEFAULT,
+class SimpleStrongestNeighbourMutation(val random: Random = Random.DEFAULT,
                                        val distortion: Double = 0.5) : PlayerMutation() {
     companion object {
-        val log: com.trustmatrix.platform.Logger = LoggerBuilder.factory(SimpleStrongestNeighbourMutation::class).getLogger()
+        val log: Logger = LoggerBuilder.factory(SimpleStrongestNeighbourMutation::class).getLogger()
     }
 
     override fun mutate(player: Player): Player? {
@@ -132,9 +117,9 @@ class SimpleStrongestNeighbourMutation(val random: com.trustmatrix.platform.Rand
 }
 
 class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001,
-                    val random: com.trustmatrix.platform.Random = com.trustmatrix.platform.Random.DEFAULT) : PlayerMutation() {
+                    val random: Random = Random.DEFAULT) : PlayerMutation() {
     companion object {
-        val log: com.trustmatrix.platform.Logger = LoggerBuilder.factory(SpawnMutation::class).getLogger()
+        val log: Logger = LoggerBuilder.factory(SpawnMutation::class).getLogger()
     }
 
     override fun mutate(player: Player): Player? {
@@ -163,7 +148,7 @@ class SpawnStrategyControl(val spawnStrategy: Strategy, val probabilityOnGenerat
 }
 
 class Generation(val previous: Generation?, val number: Long = if (previous == null) 0 else (previous.number + 1),
-                 val mutations: List<PlayerMutation> = if (previous == null) DEFAULT_MUTATIONS else previous.mutations) {
+                 val mutations: List<PlayerMutation> = if (previous == null) com.trustmatrix.Player.Companion.DEFAULT_MUTATIONS else previous.mutations) {
 }
 
 class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
@@ -185,7 +170,7 @@ class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
 class Player(val strategy: Strategy,
              var generation: Generation = Generation(null)) {
     companion object {
-        val log: com.trustmatrix.platform.Logger = LoggerBuilder.factory(Player::class).getLogger()
+        val log: Logger = LoggerBuilder.factory(Player::class).getLogger()
         val DEFAULT_MUTATIONS = listOf(
                 //SpawnMutation(Strategy.alwaysCheat),
                 //SpawnMutation(Strategy.alwaysCooperate),
@@ -208,7 +193,7 @@ class Player(val strategy: Strategy,
 
     override fun toString() = "${strategy} on ${gamePosition}"
 
-    var color: com.trustmatrix.platform.Color = strategy.color
+    var color: Color = strategy.color
     fun mutate(mutations: List<PlayerMutation> = this.generation.mutations): Player {
         val mutateIncomeModifier = generationIncome
         val gamePosition = gamePosition
@@ -305,8 +290,7 @@ data class Neighbourhood(var leftPosition: GamePosition, var rightPosition: Game
     }
 }
 
-fun <T> getShuffleComparator(clazz: KClass<out Any>, random: com.trustmatrix.platform.Random): Comparator<T> = kotlin.Comparator { o1, o2 -> random.nextInt(2) - 1 }
-
+fun <T> getShuffleComparator(clazz: KClass<out Any>, random: Random): Comparator<T> = kotlin.Comparator { o1, o2 -> random.nextInt(2) - 1 }
 enum class InitialDistribution(val player: (i: Int, j: Int) -> Player) {
     ALL_ALWAYS_COOPERATE({ _, _ -> Player(Strategy.alwaysCooperate) }),
     ALL_ALWAYS_CHEAT({ _, _ -> Player(Strategy.alwaysCheat) })
@@ -315,14 +299,14 @@ enum class InitialDistribution(val player: (i: Int, j: Int) -> Player) {
 class TrustMatrix(val xDimension: Int, val yDimension: Int,
                   val initialDistribution: (i: Int, j: Int) -> Player = ALL_ALWAYS_COOPERATE_DISTR,
                   val roundsNumber: Number = 20,
-                  val game: Game = TrustMatrix.DEFAULT_DILEMMA_GAME,
-                  val mutations: List<PlayerMutation> = Player.DEFAULT_MUTATIONS,
+                  val game: Game = DEFAULT_DILEMMA_GAME,
+                  val mutations: List<PlayerMutation> = com.trustmatrix.Player.Companion.DEFAULT_MUTATIONS,
                   val platformTools: PlatformTools) {
     var generation = Generation(null, mutations = mutations)
 
     companion object defaults {
-        val ALL_ALWAYS_COOPERATE_DISTR = InitialDistribution.ALL_ALWAYS_COOPERATE.player
-        val ALL_ALWAYS_CHEAT_DISTR = InitialDistribution.ALL_ALWAYS_CHEAT.player
+        val ALL_ALWAYS_COOPERATE_DISTR = com.trustmatrix.InitialDistribution.ALL_ALWAYS_COOPERATE.player
+        val ALL_ALWAYS_CHEAT_DISTR = com.trustmatrix.InitialDistribution.ALL_ALWAYS_CHEAT.player
         val DEFAULT_DILEMMA_GAME: Game = Game({ leftChoice, rightChoice ->
             GameResult(
                     if (leftChoice == rightChoice) {
@@ -337,7 +321,7 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
                         if (leftChoice == GameChoice.COOPERATE) 3 else -1
                     }, leftChoice, rightChoice)
         })
-        val log: com.trustmatrix.platform.Logger = LoggerBuilder.factory(TrustMatrix::class).getLogger()
+        val log: Logger = LoggerBuilder.factory(TrustMatrix::class).getLogger()
     }
 
     val positionMatrix = Array(yDimension, { i ->

@@ -1,0 +1,2 @@
+include 'trustmatrix-java' ,  'trustmatrix-js'
+rootProject.name = 'trustmatrix'

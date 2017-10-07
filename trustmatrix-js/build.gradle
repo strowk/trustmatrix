@@ -1,0 +1,35 @@
+group 'com.trustmatrix'
+version '0.0.1-SNAPSHOT'
+
+buildscript {
+    ext.kotlin_version = '1.1.4-3'
+
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'kotlin2js'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
+    testCompile 'io.kotlintest:kotlintest:2.0.5'
+
+}
+
+
+compileKotlin2Js {
+    kotlinOptions.moduleKind = "umd"
+    kotlinOptions.metaInfo = true
+}
+
+sourceSets {
+    main.kotlin.srcDirs += project(':').file('src/main/kotlin')
+}
