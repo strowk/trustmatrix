@@ -1,3 +1,6 @@
+import com.trustmatrix.SimpleStrongestNeighbourMutation
+import com.trustmatrix.SpawnMutationUniform
+import com.trustmatrix.Strategy
 import com.trustmatrix.TrustMatrix
 import com.trustmatrix.platform.*
 import kotlinx.html.canvas
@@ -29,7 +32,15 @@ fun main(args: Array<String>) {
     body.appendChild(div)
     val render = canvas.getContext("2d") as CanvasRenderingContext2D
 
-    val trustMatrix = TrustMatrix(50, 50, platformTools = platformTools)
+    val trustMatrix = TrustMatrix(100, 100, platformTools = platformTools, mutations = listOf(
+            SimpleStrongestNeighbourMutation(),
+            SpawnMutationUniform(setOf(
+                    Strategy.alwaysCheat
+                    , Strategy.alwaysCooperate
+                    , Strategy.anEyeForAnEye
+                    , Strategy.smartOne
+            ))
+    ))
     val start = Date().getTime()
     val canvasWidth = canvas.width * 1.0
     val canvasHeight = canvas.height * 1.0

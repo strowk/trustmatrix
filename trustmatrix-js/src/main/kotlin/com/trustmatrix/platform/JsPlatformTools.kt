@@ -23,7 +23,7 @@ class JsPlatformTools : PlatformTools {
 
 class JsRandom() : Random {
     override fun nextDouble(): Double = Math.random()
-    override fun nextInt(max: Int): Int = Math.round(Math.random() * max)
+    override fun nextInt(max: Int): Int = (Math.random() * (max - 0) + 0).toInt()
     override fun nextInt(): Int = nextInt(Int.MAX_VALUE - 1)
 }
 

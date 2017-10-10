@@ -23,9 +23,7 @@ class GameHistory(val game: Game) {
 }
 
 class PersonalGameHistory(val gameHistory: GameHistory, val left: Boolean) {
-    val results
-        get() = gameHistory.gameResults.map { PersonalGameResult(it, left) }
-
+    operator fun get(i: Int) = PersonalGameResult(gameHistory.gameResults[i], left)
 }
 
 class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, val name: String = "default") {
@@ -37,7 +35,7 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, 
                     if (it.gameHistory.currentRound == 0) {
                         GameChoice.COOPERATE
                     } else {
-                        it.results[it.gameHistory.currentRound - 1].opponentChoice
+                        it[it.gameHistory.currentRound - 1].opponentChoice
                     }
                 }, Color.BLUE, "anEyeForAnEye")
         val smartOne = Strategy(
@@ -48,8 +46,8 @@ class Strategy(val play: (PersonalGameHistory) -> GameChoice, val color: Color, 
                         if (it.gameHistory.currentRound == 1) {
                             GameChoice.COOPERATE
                         } else {
-                            val firstOpponentChoice = it.results[0].opponentChoice
-                            val secondOpponentChoice = it.results[1].opponentChoice
+                            val firstOpponentChoice = it[0].opponentChoice
+                            val secondOpponentChoice = it[1].opponentChoice
                             if (firstOpponentChoice == GameChoice.CHEAT && secondOpponentChoice == GameChoice.CHEAT) {
                                 //we play with always cheat - let's not be tricked anymore
                                 GameChoice.CHEAT
@@ -99,12 +97,16 @@ class SimpleStrongestNeighbourMutation(val random: Random = Random.DEFAULT,
             log.error("Strange things happen: player without position plays");
             throw RuntimeException("Player without position cannot play");
         }
-        val strongestNeighbour = gamePosition.neighborPositions
+
+        // we need shuffle strongest because in another case we would get some particular pattern in players distribution
+        val sortedByIncome = gamePosition.neighborPositions
                 .map { it.player }
-                // we need shuffle here because in another case we would get some particular pattern in players distribution
-                .sortedWith(getShuffleComparator(Player::class, random))
-                .maxWith(kotlin.Comparator { player1, player2 -> player1.generationIncomeToShow.compareTo(player2.generationIncomeToShow) })
-                ?: throw RuntimeException("No neighbours to find maximum, cannot calculate mutation for isolated player"); /*TODO maybe Strategy.alwaysCheat*/
+                .sortedWith(kotlin.Comparator { player1, player2 -> player1.generationIncomeToShow.compareTo(player2.generationIncomeToShow) * -1 /*simple invert*/ })
+        val maxIncome = sortedByIncome.first().generationIncomeToShow
+        val strongest = sortedByIncome.takeWhile { it.generationIncomeToShow == maxIncome }
+        val randomStrongest = random.nextInt(strongest.size)
+        val strongestNeighbour = strongest.get(randomStrongest)
+
         log.debug("Strongest neighbour is in ${strongestNeighbour.gamePosition?.coordinateText()} " +
                 "and have ${strongestNeighbour.strategy} strategy " +
                 "with ${strongestNeighbour.generationIncomeToShow} generation income")
@@ -290,7 +292,7 @@ data class Neighbourhood(var leftPosition: GamePosition, var rightPosition: Game
     }
 }
 
-fun <T> getShuffleComparator(clazz: KClass<out Any>, random: Random): Comparator<T> = kotlin.Comparator { o1, o2 -> random.nextInt(2) - 1 }
+fun <T> getShuffleComparator(clazz: KClass<out Any>, random: Random): Comparator<T> = kotlin.Comparator { _, _ -> random.nextInt(2) - 1 }
 enum class InitialDistribution(val player: (i: Int, j: Int) -> Player) {
     ALL_ALWAYS_COOPERATE({ _, _ -> Player(Strategy.alwaysCooperate) }),
     ALL_ALWAYS_CHEAT({ _, _ -> Player(Strategy.alwaysCheat) })

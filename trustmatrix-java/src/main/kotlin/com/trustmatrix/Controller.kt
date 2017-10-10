@@ -51,7 +51,7 @@ class Controller : Initializable {
         val positionRectYSize = img.height / matrix.yDimension
         matrix.positionMatrix.forEach {
             it.forEach {
-                gc.fill = it.color().toPlatform() as Color
+                gc.fill = it.color() as Color
                 gc.fillRect(positionRectXSize * it.j, positionRectYSize * it.i, positionRectXSize, positionRectYSize)
             }
         }
