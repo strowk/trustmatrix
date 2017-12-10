@@ -24,12 +24,12 @@ fun main(args: Array<String>) {
 
     canvas.height = Math.min(window.innerHeight, window.innerWidth)
     canvas.width = Math.min(window.innerHeight, window.innerWidth)
-    val div = document.create.div("div") {
-        p { +"test2" }
-    }
+//    val div = document.create.div("div") {
+//        p { +"test2" }
+//    }
     val body = document.body
     body!!.appendChild(canvas)
-    body.appendChild(div)
+//    body.appendChild(div)
     val render = canvas.getContext("2d") as CanvasRenderingContext2D
 
     val trustMatrix = TrustMatrix(100, 100, platformTools = platformTools, mutations = listOf(
