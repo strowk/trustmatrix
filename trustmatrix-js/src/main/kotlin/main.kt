@@ -33,13 +33,13 @@ fun main(args: Array<String>) {
     val render = canvas.getContext("2d") as CanvasRenderingContext2D
 
     val trustMatrix = TrustMatrix(100, 100, platformTools = platformTools, mutations = listOf(
-            SimpleStrongestNeighbourMutation(),
+            SimpleStrongestNeighbourMutation(platformTools.random()),
             SpawnMutationUniform(setOf(
                     Strategy.alwaysCheat
                     , Strategy.alwaysCooperate
                     , Strategy.anEyeForAnEye
                     , Strategy.smartOne
-            ))
+            ), random = platformTools.random())
     ))
     val start = Date().getTime()
     val canvasWidth = canvas.width * 1.0
@@ -53,7 +53,7 @@ fun main(args: Array<String>) {
     val timerToGenerate = window.setInterval({
         trustMatrix.generate()
         drawMatrix(render, canvasWidth, canvasHeight, trustMatrix, log, xSize, ySize)
-    }, 200)
+    }, 400)
 }
 
 private fun drawMatrix(render: CanvasRenderingContext2D, canvasWidth: Double, canvasHeight: Double, trustMatrix: TrustMatrix, log: Logger, xSize: Double, ySize: Double) {

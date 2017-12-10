@@ -113,14 +113,14 @@ class Controller : Initializable {
 
     private fun buildTrustMatrix() = TrustMatrix(100, 100,
             mutations = listOf(
-                    SimpleStrongestNeighbourMutation(distortion = distortion.text.toDoubleOrNull() ?: 0.0),
+                    SimpleStrongestNeighbourMutation(random = platform.random(), distortion = distortion.text.toDoubleOrNull() ?: 0.0),
                     SpawnMutationUniform(setOf(
                             Strategy.alwaysCheat
                             , Strategy.alwaysCooperate
                             , Strategy.anEyeForAnEye
                             , Strategy.smartOne
 
-                    ))
+                    ), random = platform.random())
             ),
             initialDistribution = InitialDistribution.valueOf(
                     listBoxForInitialDistribution.focusModel.focusedItem ?:

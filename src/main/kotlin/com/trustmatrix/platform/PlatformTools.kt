@@ -8,9 +8,8 @@ interface PlatformTools {
 
 interface Random {
     companion object {
-        lateinit var DEFAULT: Random
+        lateinit var RANDOM_SOURCE: Random
     }
-
     fun nextDouble(): Double
     fun nextInt(): Int
     fun nextInt(max: Int): Int

@@ -1,6 +1,5 @@
 package com.trustmatrix.platform
 
-import java.util.*
 import kotlin.reflect.KClass
 
 class JavaPlatformTools : PlatformTools {
@@ -13,12 +12,12 @@ class JavaPlatformTools : PlatformTools {
             log.info("Initialize Color: ${JavaFxColor::class}")
             JavaFxColor(javafx.scene.paint.Color.WHITE).toPlatform() //would cause JavaFxColor::init to call
             log.info("Initialize Random: ${JavaRandom::class}")
-            Random.DEFAULT = JavaRandom(java.util.Random())
+            Random.RANDOM_SOURCE = JavaRandom(java.util.Random())
         }
 
     }
 
-    override fun random(): Random = JavaRandom(java.util.Random())
+    override fun random(): Random = Random.RANDOM_SOURCE
 }
 
 class JavaRandom(val random: java.util.Random) : Random {

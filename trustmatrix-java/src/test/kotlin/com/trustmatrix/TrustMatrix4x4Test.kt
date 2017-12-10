@@ -18,19 +18,21 @@ import org.junit.Test
 
 
 internal class TrustMatrix4x4Test {
+    private val gen = Generation(listOf(SimpleStrongestNeighbourMutation(TrustMatrix4x4Test.platform.random(), distortion = 0.0)))
+
     companion object {
         //have to initialize all statics first
         val platform = JavaPlatformTools()
     }
 
     val matrix = TrustMatrix(4, 4, TrustMatrix.ALL_ALWAYS_COOPERATE_DISTR, 10, TrustMatrix.DEFAULT_DILEMMA_GAME,
-            listOf(SimpleStrongestNeighbourMutation(distortion = 0.0)),
-            platformTools = JavaPlatformTools())
+            JavaPlatformTools(),
+            listOf(SimpleStrongestNeighbourMutation(platform.random(), distortion = 0.0)))
 
     @Test
     fun testMutation() {
         //we place cheat spawn
-        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.alwaysCheat))
+        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.alwaysCheat, gen))
         //it growth
         matrix.generate()
         Assert.assertEquals(null, matrix.positionMatrix[1][1].nextPlayer)
@@ -106,7 +108,7 @@ internal class TrustMatrix4x4Test {
         matrix.positionMatrix.forEach { it.forEach { Assert.assertEquals(Strategy.alwaysCheat, it.player.strategy) } }
 
         //and even spawned some good
-        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.alwaysCooperate))
+        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.alwaysCooperate, gen))
         matrix.generate()
         //would be long gone next time
         Assert.assertEquals(Strategy.alwaysCheat, matrix.positionMatrix[1][1].nextPlayer?.strategy)
@@ -155,7 +157,7 @@ internal class TrustMatrix4x4Test {
         Assert.assertEquals(null, matrix.positionMatrix[3][0].nextPlayer)
 
         //even eye for an eye
-        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.anEyeForAnEye))
+        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.anEyeForAnEye, gen))
         matrix.generate()
         //cannot handle this alone
         Assert.assertEquals(Strategy.alwaysCheat, matrix.positionMatrix[1][1].nextPlayer?.strategy)
@@ -202,8 +204,8 @@ internal class TrustMatrix4x4Test {
         Assert.assertEquals(null, matrix.positionMatrix[3][0].nextPlayer)
 
         //two of good guys
-        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.alwaysCooperate))
-        matrix.positionMatrix[2][1].placePlayer(Player(Strategy.alwaysCooperate))
+        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.alwaysCooperate, gen))
+        matrix.positionMatrix[2][1].placePlayer(Player(Strategy.alwaysCooperate, gen))
         matrix.generate()
         matrix.generate()
         //still would face inevitable
@@ -239,8 +241,8 @@ internal class TrustMatrix4x4Test {
         Assert.assertEquals(null, matrix.positionMatrix[3][0].nextPlayer)
 
         //but given right support
-        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.anEyeForAnEye))
-        matrix.positionMatrix[2][1].placePlayer(Player(Strategy.anEyeForAnEye))
+        matrix.positionMatrix[1][1].placePlayer(Player(Strategy.anEyeForAnEye, gen))
+        matrix.positionMatrix[2][1].placePlayer(Player(Strategy.anEyeForAnEye, gen))
         matrix.generate()
         //they would grow themselves
         Assert.assertEquals(Strategy.anEyeForAnEye, matrix.positionMatrix[0][0].nextPlayer?.strategy)

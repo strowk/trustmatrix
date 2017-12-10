@@ -13,12 +13,12 @@ class JsPlatformTools : PlatformTools {
             log.info("Initialize Color: ${JsColor::class}")
             JsColor(JsColors.WHITE).toPlatform() //would cause JavaFxColor::init to call
             log.info("Initialize Random: ${JsRandom::class}")
-            Random.DEFAULT = JsRandom()
+            Random.RANDOM_SOURCE = JsRandom()
         }
 
     }
 
-    override fun random(): Random = JsRandom()
+    override fun random(): Random = Random.RANDOM_SOURCE
 }
 
 class JsRandom() : Random {

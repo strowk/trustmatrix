@@ -81,7 +81,7 @@ abstract class PlayerMutation {
     abstract fun mutate(player: Player): Player?;
 }
 
-class SimpleStrongestNeighbourMutation(val random: Random = Random.DEFAULT,
+class SimpleStrongestNeighbourMutation(val random: Random,
                                        val distortion: Double = 0.5) : PlayerMutation() {
     companion object {
         val log: Logger = LoggerBuilder.factory(SimpleStrongestNeighbourMutation::class).getLogger()
@@ -112,14 +112,14 @@ class SimpleStrongestNeighbourMutation(val random: Random = Random.DEFAULT,
                 "with ${strongestNeighbour.generationIncomeToShow} generation income")
         if (player.strategy != strongestNeighbour.strategy && player.generationIncomeToShow < strongestNeighbour.generationIncomeToShow) {
             val mutateTo = strongestNeighbour.strategy
-            return Player(mutateTo)
+            return Player(mutateTo, player.generation)
         }
         return null
     }
 }
 
 class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001,
-                    val random: Random = Random.DEFAULT) : PlayerMutation() {
+                    val random: Random) : PlayerMutation() {
     companion object {
         val log: Logger = LoggerBuilder.factory(SpawnMutation::class).getLogger()
     }
@@ -127,7 +127,7 @@ class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001
     override fun mutate(player: Player): Player? {
         if (player.strategy != spawnStrategy && random.nextDouble() > 1.0 - probability) {
             log.debug("${player} spontaneously become ${spawnStrategy}")
-            return Player(spawnStrategy)
+            return Player(spawnStrategy, player.generation)
         }
         return null
     }
@@ -135,13 +135,13 @@ class SpawnMutation(val spawnStrategy: Strategy, val probability: Double = 0.001
 
 class SpawnMutationUniform(val spawnStrategies: Set<Strategy>,
                            val probability: Double = 0.001 * spawnStrategies.size,
-                           val random: Random = Random.DEFAULT) : PlayerMutation() {
+                           val random: Random) : PlayerMutation() {
     override fun mutate(player: Player): Player? {
         val spawnHappened = random.nextDouble() > 1.0 - probability
         if (!spawnHappened) return null
 
         val spawnAllowedStrategies = spawnStrategies.filter { it != player.strategy }
-        return Player(spawnAllowedStrategies[random.nextInt(spawnAllowedStrategies.size)])
+        return Player(spawnAllowedStrategies[random.nextInt(spawnAllowedStrategies.size)], player.generation)
     }
 }
 
@@ -149,12 +149,15 @@ class SpawnStrategyControl(val spawnStrategy: Strategy, val probabilityOnGenerat
 
 }
 
-class Generation(val previous: Generation?, val number: Long = if (previous == null) 0 else (previous.number + 1),
-                 val mutations: List<PlayerMutation> = if (previous == null) com.trustmatrix.Player.Companion.DEFAULT_MUTATIONS else previous.mutations) {
+class Generation(val previous: Generation?, val number: Long,
+                 val mutations: List<PlayerMutation>) {
+
+    constructor(parent: Generation) : this(parent, parent.number + 1, parent.mutations) {};
+    constructor(mutations: List<PlayerMutation>) : this(null, 0, mutations) {};
 }
 
 class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
-                                val random: Random = Random.DEFAULT) : PlayerMutation() {
+                                val random: Random) : PlayerMutation() {
     override fun mutate(player: Player): Player? {
         //TODO should check if overhead
         val coin = random.nextDouble()
@@ -162,7 +165,7 @@ class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
         spawnStrategies.forEach {
             spawnPosition += it.probabilityOnGeneration(player.generation);
             if (spawnPosition > coin) {
-                return Player(it.spawnStrategy)
+                return Player(it.spawnStrategy, player.generation)
             }
         }
         return null
@@ -170,21 +173,9 @@ class SpawnMutationConfigurable(val spawnStrategies: Set<SpawnStrategyControl>,
 }
 
 class Player(val strategy: Strategy,
-             var generation: Generation = Generation(null)) {
+             var generation: Generation) {
     companion object {
         val log: Logger = LoggerBuilder.factory(Player::class).getLogger()
-        val DEFAULT_MUTATIONS = listOf(
-                //SpawnMutation(Strategy.alwaysCheat),
-                //SpawnMutation(Strategy.alwaysCooperate),
-                //SpawnMutation(Strategy.anEyeForAnEye)
-                SimpleStrongestNeighbourMutation(),
-                SpawnMutationUniform(setOf(
-                        Strategy.alwaysCheat
-                        , Strategy.alwaysCooperate
-                        , Strategy.anEyeForAnEye
-
-                ))
-        )
     }
 
     var generationIncomeToShow: Int = 0
@@ -293,18 +284,29 @@ data class Neighbourhood(var leftPosition: GamePosition, var rightPosition: Game
 }
 
 fun <T> getShuffleComparator(clazz: KClass<out Any>, random: Random): Comparator<T> = kotlin.Comparator { _, _ -> random.nextInt(2) - 1 }
-enum class InitialDistribution(val player: (i: Int, j: Int) -> Player) {
-    ALL_ALWAYS_COOPERATE({ _, _ -> Player(Strategy.alwaysCooperate) }),
-    ALL_ALWAYS_CHEAT({ _, _ -> Player(Strategy.alwaysCheat) })
+enum class InitialDistribution(val player: (i: Int, j: Int, mutations: List<PlayerMutation>) -> Player) {
+    ALL_ALWAYS_COOPERATE({ _, _, mutations -> Player(Strategy.alwaysCooperate, Generation(mutations)) }),
+    ALL_ALWAYS_CHEAT({ _, _, mutations -> Player(Strategy.alwaysCheat, Generation(mutations)) })
 }
 
 class TrustMatrix(val xDimension: Int, val yDimension: Int,
-                  val initialDistribution: (i: Int, j: Int) -> Player = ALL_ALWAYS_COOPERATE_DISTR,
+                  val initialDistribution: (i: Int, j: Int, mutations: List<PlayerMutation>) -> Player = ALL_ALWAYS_COOPERATE_DISTR,
                   val roundsNumber: Number = 20,
                   val game: Game = DEFAULT_DILEMMA_GAME,
-                  val mutations: List<PlayerMutation> = com.trustmatrix.Player.Companion.DEFAULT_MUTATIONS,
-                  val platformTools: PlatformTools) {
-    var generation = Generation(null, mutations = mutations)
+                  val platformTools: PlatformTools,
+                  val mutations: List<PlayerMutation> = listOf(
+                          //SpawnMutation(Strategy.alwaysCheat),
+                          //SpawnMutation(Strategy.alwaysCooperate),
+                          //SpawnMutation(Strategy.anEyeForAnEye)
+                          SimpleStrongestNeighbourMutation(random = platformTools.random()),
+                          SpawnMutationUniform(setOf(
+                                  Strategy.alwaysCheat
+                                  , Strategy.alwaysCooperate
+                                  , Strategy.anEyeForAnEye
+
+                          ), random = platformTools.random())
+                  )) {
+    var generation = Generation(mutations)
 
     companion object defaults {
         val ALL_ALWAYS_COOPERATE_DISTR = com.trustmatrix.InitialDistribution.ALL_ALWAYS_COOPERATE.player
@@ -328,7 +330,7 @@ class TrustMatrix(val xDimension: Int, val yDimension: Int,
 
     val positionMatrix = Array(yDimension, { i ->
         Array(xDimension, { j ->
-            GamePosition(i, j, initialDistribution(i, j), arrayListOf(
+            GamePosition(i, j, initialDistribution(i, j, mutations), arrayListOf(
                     { getGamePositionByCoordinates(i - 1, j - 1) },
                     { getGamePositionByCoordinates(i - 0, j - 1) },
                     { getGamePositionByCoordinates(i - 1, j - 0) },
