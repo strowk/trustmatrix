@@ -1,0 +1,21 @@
+<!--
+  #%L
+  trustmatrix-main
+  %%
+  Copyright (C) 2017 Timur Sultanaev
+  %%
+  Licensed under the MIT license.
+  See LICENSE file in the root of project for details.
+  #L%
+  -->
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%thread] %-5level %logger{35} - %msg %n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>

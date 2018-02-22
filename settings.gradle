@@ -1,2 +1,2 @@
-include 'trustmatrix-java' ,  'trustmatrix-js'
+include 'trustmatrix-java' ,  'trustmatrix-js' , 'trustmatrix-mobile'
 rootProject.name = 'trustmatrix'
